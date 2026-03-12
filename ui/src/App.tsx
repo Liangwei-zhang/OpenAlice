@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import { Sidebar } from './components/Sidebar'
 import { ChatPage } from './pages/ChatPage'
 import { PortfolioPage } from './pages/PortfolioPage'
@@ -36,6 +36,7 @@ export const ROUTES: Record<Page, string> = {
 export function App() {
   const [sseConnected, setSseConnected] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const location = useLocation()
 
   return (
     <div className="flex h-full">
@@ -58,20 +59,22 @@ export function App() {
           </button>
           <span className="text-sm font-semibold text-text">Open Alice</span>
         </div>
-        <Routes>
-          <Route path="/" element={<ChatPage onSSEStatus={setSseConnected} />} />
-          <Route path="/portfolio" element={<PortfolioPage />} />
-          <Route path="/events" element={<EventsPage />} />
-          <Route path="/heartbeat" element={<HeartbeatPage />} />
-          <Route path="/data-sources" element={<DataSourcesPage />} />
-          <Route path="/connectors" element={<ConnectorsPage />} />
-          <Route path="/tools" element={<ToolsPage />} />
-          <Route path="/trading" element={<TradingPage />} />
-          <Route path="/ai-provider" element={<AIProviderPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-          <Route path="/dev" element={<DevPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
+        <div key={location.pathname} className="page-fade-in flex-1 flex flex-col min-h-0">
+          <Routes>
+            <Route path="/" element={<ChatPage onSSEStatus={setSseConnected} />} />
+            <Route path="/portfolio" element={<PortfolioPage />} />
+            <Route path="/events" element={<EventsPage />} />
+            <Route path="/heartbeat" element={<HeartbeatPage />} />
+            <Route path="/data-sources" element={<DataSourcesPage />} />
+            <Route path="/connectors" element={<ConnectorsPage />} />
+            <Route path="/tools" element={<ToolsPage />} />
+            <Route path="/trading" element={<TradingPage />} />
+            <Route path="/ai-provider" element={<AIProviderPage />} />
+            <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/dev" element={<DevPage />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </div>
       </main>
     </div>
   )

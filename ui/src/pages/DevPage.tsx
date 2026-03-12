@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Section } from '../components/form'
+import { PageHeader } from '../components/PageHeader'
+import { Spinner, EmptyState } from '../components/StateViews'
 import {
   devApi,
   type RegistryResponse,
@@ -10,11 +12,7 @@ import {
 export function DevPage() {
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4">
-          <h2 className="text-base font-semibold text-text">Dev</h2>
-        </div>
-      </div>
+      <PageHeader title="Dev" />
 
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
         <div className="max-w-[640px] space-y-5">
@@ -65,7 +63,7 @@ function RegistrySection() {
               </thead>
               <tbody>
                 {data.connectors.map((cn) => (
-                  <tr key={cn.channel} className="text-text">
+                  <tr key={cn.channel} className="text-text hover:bg-bg-tertiary/30 transition-colors">
                     <td className="py-0.5 pr-3 font-mono text-xs">{cn.channel}</td>
                     <td className="py-0.5 pr-3 font-mono text-xs">{cn.to}</td>
                     <td className="py-0.5 pr-3">{cn.capabilities.push ? 'yes' : 'no'}</td>
@@ -227,9 +225,9 @@ function SessionsSection() {
   return (
     <Section title="Sessions" description="Active session files on disk.">
       {sessions === null ? (
-        <p className="text-sm text-text-muted">Loading...</p>
+        <div className="flex justify-center py-6"><Spinner size="sm" /></div>
       ) : sessions.length === 0 ? (
-        <p className="text-sm text-text-muted">No sessions found.</p>
+        <EmptyState title="No sessions found." />
       ) : (
         <table className="w-full text-sm">
           <thead>
@@ -240,7 +238,7 @@ function SessionsSection() {
           </thead>
           <tbody>
             {sessions.map((s) => (
-              <tr key={s.id} className="text-text">
+              <tr key={s.id} className="text-text hover:bg-bg-tertiary/30 transition-colors">
                 <td className="py-0.5 pr-3 font-mono text-xs">{s.id}</td>
                 <td className="py-0.5 text-right text-xs text-text-muted">{formatSize(s.sizeBytes)}</td>
               </tr>

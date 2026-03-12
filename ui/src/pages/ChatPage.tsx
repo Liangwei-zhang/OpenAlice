@@ -21,6 +21,7 @@ export function ChatPage({ onSSEStatus }: ChatPageProps) {
   const [messages, setMessages] = useState<DisplayItem[]>([])
   const [isWaiting, setIsWaiting] = useState(false)
   const [showScrollBtn, setShowScrollBtn] = useState(false)
+  const [newMsgCount, setNewMsgCount] = useState(0)
 
   // Popover state
   const [popoverOpen, setPopoverOpen] = useState(false)
@@ -74,6 +75,7 @@ export function ChatPage({ onSSEStatus }: ChatPageProps) {
       const isUp = scrollHeight - scrollTop - clientHeight > 80
       userScrolledUp.current = isUp
       setShowScrollBtn(isUp)
+      if (!isUp) setNewMsgCount(0)
     }
     el.addEventListener('scroll', onScroll)
     return () => el.removeEventListener('scroll', onScroll)
@@ -110,6 +112,9 @@ export function ChatPage({ onSSEStatus }: ChatPageProps) {
           ...prev,
           { kind: 'text', role, text: data.text, media: data.media, _id: nextId.current++ },
         ])
+        if (userScrolledUp.current) {
+          setNewMsgCount((c) => c + 1)
+        }
       }
     },
     onStatus: activeChannel === 'default' ? onSSEStatus : undefined,
@@ -127,6 +132,9 @@ export function ChatPage({ onSSEStatus }: ChatPageProps) {
       if (data.text) {
         const media = data.media?.length ? data.media : undefined
         setMessages((prev) => [...prev, { kind: 'text', role: 'assistant', text: data.text, media, _id: nextId.current++ }])
+        if (userScrolledUp.current) {
+          setNewMsgCount((c) => c + 1)
+        }
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error'
@@ -142,6 +150,7 @@ export function ChatPage({ onSSEStatus }: ChatPageProps) {
   const handleScrollToBottom = useCallback(() => {
     userScrolledUp.current = false
     setShowScrollBtn(false)
+    setNewMsgCount(0)
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [])
 
@@ -389,12 +398,17 @@ export function ChatPage({ onSSEStatus }: ChatPageProps) {
         <div className="relative">
           <button
             onClick={handleScrollToBottom}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-bg-secondary border border-border text-text-muted hover:text-text hover:border-accent/50 flex items-center justify-center transition-all shadow-lg z-10"
+            className="absolute -top-14 left-1/2 -translate-x-1/2 w-10 h-10 rounded-full bg-bg-secondary border border-border text-text-muted hover:text-text hover:border-accent/50 flex items-center justify-center transition-all shadow-lg z-10"
             aria-label="Scroll to bottom"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7" />
             </svg>
+            {newMsgCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] rounded-full bg-accent text-white text-[10px] font-semibold flex items-center justify-center px-1">
+                {newMsgCount > 99 ? '99+' : newMsgCount}
+              </span>
+            )}
           </button>
         </div>
       )}

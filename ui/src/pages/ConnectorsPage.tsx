@@ -2,6 +2,7 @@ import { useConfigPage } from '../hooks/useConfigPage'
 import { SaveIndicator } from '../components/SaveIndicator'
 import { SDKSelector, CONNECTOR_OPTIONS } from '../components/SDKSelector'
 import { Section, Field, inputClass } from '../components/form'
+import { PageHeader } from '../components/PageHeader'
 import type { AppConfig, ConnectorsConfig } from '../api'
 
 export function ConnectorsPage() {
@@ -32,18 +33,11 @@ export function ConnectorsPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-text">Connectors</h2>
-            <p className="text-[12px] text-text-muted mt-1">
-              Service ports and external integrations. Changes require a restart.
-            </p>
-          </div>
-          <SaveIndicator status={status} onRetry={retry} />
-        </div>
-      </div>
+      <PageHeader
+        title="Connectors"
+        description="Service ports and external integrations. Changes require a restart."
+        right={<SaveIndicator status={status} onRetry={retry} />}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">

@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { api, type Position, type WalletCommitLog } from '../api'
+import { PageHeader } from '../components/PageHeader'
+import { EmptyState } from '../components/StateViews'
 
 // ==================== Types ====================
 
@@ -66,20 +68,10 @@ export function PortfolioPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-text">Portfolio</h2>
-            <p className="text-[12px] text-text-muted mt-1">
-              Live portfolio overview across all trading accounts.
-              {lastRefresh && (
-                <span className="ml-2 text-text-muted/50">
-                  Updated {lastRefresh.toLocaleTimeString()}
-                </span>
-              )}
-            </p>
-          </div>
+      <PageHeader
+        title="Portfolio"
+        description={<>Live portfolio overview across all trading accounts.{lastRefresh && <span className="ml-2 text-text-muted/50">Updated {lastRefresh.toLocaleTimeString()}</span>}</>}
+        right={
           <button
             onClick={refresh}
             disabled={loading}
@@ -87,8 +79,8 @@ export function PortfolioPage() {
           >
             {loading ? 'Loading...' : 'Refresh'}
           </button>
-        </div>
-      </div>
+        }
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
@@ -105,13 +97,10 @@ export function PortfolioPage() {
 
           {/* Empty states */}
           {data.accounts.length === 0 && !loading && (
-            <div className="text-center py-12 text-text-muted">
-              <p className="text-sm">No trading accounts connected.</p>
-              <p className="text-[12px] mt-1">Configure connections in the Trading page.</p>
-            </div>
+            <EmptyState title="No trading accounts connected." description="Configure connections in the Trading page." />
           )}
           {data.accounts.length > 0 && allPositions.length === 0 && !loading && (
-            <p className="text-center py-8 text-[13px] text-text-muted">No open positions.</p>
+            <EmptyState title="No open positions." />
           )}
 
           {allWalletLogs.length > 0 && (
@@ -251,7 +240,7 @@ function PositionsTable({ positions }: { positions: PositionWithAccount[] }) {
           </thead>
           <tbody>
             {positions.map((p, i) => (
-              <tr key={i} className="border-t border-border">
+              <tr key={i} className="border-t border-border hover:bg-bg-tertiary/30 transition-colors">
                 <td className="px-3 py-2 font-medium text-text">
                   {p.contract.symbol}
                   <span className="text-[10px] text-text-muted ml-1.5">{p.accountLabel}</span>

@@ -4,6 +4,8 @@ import { Toggle } from '../components/Toggle'
 import { SaveIndicator } from '../components/SaveIndicator'
 import { Section, Field, inputClass } from '../components/form'
 import { useAutoSave } from '../hooks/useAutoSave'
+import { PageHeader } from '../components/PageHeader'
+import { PageLoading } from '../components/StateViews'
 
 export function SettingsPage() {
   const [config, setConfig] = useState<AppConfig | null>(null)
@@ -14,14 +16,10 @@ export function SettingsPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4">
-          <h2 className="text-base font-semibold text-text">Settings</h2>
-        </div>
-      </div>
+      <PageHeader title="Settings" />
 
+      {config ? (
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-6">
-        {config && (
           <div className="max-w-[640px] space-y-5">
             {/* Agent */}
             <Section id="agent" title="Agent" description="Controls file-system and tool permissions for the AI. Changes apply on the next request.">
@@ -55,8 +53,10 @@ export function SettingsPage() {
               <CompactionForm config={config} />
             </Section>
           </div>
-        )}
       </div>
+      ) : (
+        <PageLoading />
+      )}
     </div>
   )
 }

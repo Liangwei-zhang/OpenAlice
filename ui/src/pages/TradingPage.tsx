@@ -5,6 +5,7 @@ import { GuardsSection, CRYPTO_GUARD_TYPES, SECURITIES_GUARD_TYPES } from '../co
 import { SDKSelector, PLATFORM_TYPE_OPTIONS } from '../components/SDKSelector'
 import { ReconnectButton } from '../components/ReconnectButton'
 import { useTradingConfig } from '../hooks/useTradingConfig'
+import { PageHeader } from '../components/PageHeader'
 import type { PlatformConfig, CcxtPlatformConfig, AlpacaPlatformConfig, AccountConfig } from '../api/types'
 
 // ==================== Dialog state ====================
@@ -55,13 +56,7 @@ export function TradingPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4">
-          <h2 className="text-base font-semibold text-text">Trading</h2>
-          <p className="text-[12px] text-text-muted mt-1">Configure your trading accounts.</p>
-        </div>
-      </div>
+      <PageHeader title="Trading" description="Configure your trading accounts." />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
@@ -119,12 +114,7 @@ export function TradingPage() {
 function PageShell({ subtitle, children }: { subtitle: string; children?: React.ReactNode }) {
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4">
-          <h2 className="text-base font-semibold text-text">Trading</h2>
-          <p className="text-[12px] text-text-muted mt-1">{subtitle}</p>
-        </div>
-      </div>
+      <PageHeader title="Trading" description={subtitle} />
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">{children}</div>
     </div>
   )

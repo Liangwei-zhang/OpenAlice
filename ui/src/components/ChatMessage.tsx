@@ -86,12 +86,22 @@ export function ChatMessage({ role, text, timestamp, isGrouped, media }: ChatMes
 
   if (role === 'notification') {
     return (
-      <div className="flex flex-col items-center message-enter">
-        <div className="max-w-[90%] px-4 py-2.5 bg-notification-bg border border-notification-border rounded-lg text-[13px] break-words">
-          <div className="markdown-content" dangerouslySetInnerHTML={{ __html: `\ud83d\udd14 ${html}` }} />
-          {media?.map((m, i) => (
-            <img key={i} src={m.url} alt="" className="max-w-full rounded-lg mt-2" />
-          ))}
+      <div className="flex items-start gap-3 message-enter ml-8">
+        <div className="w-0.5 shrink-0 self-stretch rounded-full bg-notification-border" />
+        <div className="flex-1 min-w-0 py-0.5">
+          <div className="flex items-center gap-1.5 mb-1">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-notification-border shrink-0">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+            <span className="text-[11px] text-text-muted/60 font-medium">Notification</span>
+          </div>
+          <div ref={contentRef} className="text-[13px] text-text-muted break-words leading-relaxed">
+            <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html! }} />
+            {media?.map((m, i) => (
+              <img key={i} src={m.url} alt="" className="max-w-full rounded-lg mt-2" />
+            ))}
+          </div>
         </div>
       </div>
     )

@@ -4,6 +4,7 @@ import { Toggle } from '../components/Toggle'
 import { SaveIndicator } from '../components/SaveIndicator'
 import { Section, Field, inputClass } from '../components/form'
 import { useAutoSave } from '../hooks/useAutoSave'
+import { PageHeader } from '../components/PageHeader'
 
 // ==================== Helpers ====================
 
@@ -282,7 +283,7 @@ function RecentEvents() {
 
   return (
     <Section title="Recent Events">
-      <div className="bg-bg rounded-lg border border-border overflow-hidden font-mono text-xs">
+      <div className="bg-bg rounded-lg border border-border overflow-x-auto font-mono text-xs">
         {loading ? (
           <div className="px-4 py-6 text-center text-text-muted">Loading...</div>
         ) : entries.length === 0 ? (
@@ -301,7 +302,7 @@ function RecentEvents() {
               {entries.map((entry) => {
                 const payloadStr = JSON.stringify(entry.payload)
                 return (
-                  <tr key={entry.seq} className="border-t border-border/50">
+                  <tr key={entry.seq} className="border-t border-border/50 hover:bg-bg-tertiary/30 transition-colors">
                     <td className="px-3 py-1.5 text-text-muted">{entry.seq}</td>
                     <td className="px-3 py-1.5 text-text-muted whitespace-nowrap">{formatDateTime(entry.ts)}</td>
                     <td className={`px-3 py-1.5 ${eventTypeColor(entry.type)}`}>
@@ -332,11 +333,7 @@ export function HeartbeatPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4">
-          <h2 className="text-base font-semibold text-text">Heartbeat</h2>
-        </div>
-      </div>
+      <PageHeader title="Heartbeat" />
 
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">
         <div className="max-w-[720px] space-y-6">

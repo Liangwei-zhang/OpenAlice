@@ -4,6 +4,7 @@ import { SaveIndicator } from '../components/SaveIndicator'
 import { Field, inputClass } from '../components/form'
 import { Toggle } from '../components/Toggle'
 import { useConfigPage } from '../hooks/useConfigPage'
+import { PageHeader } from '../components/PageHeader'
 import type { SaveStatus } from '../hooks/useAutoSave'
 
 type OpenbbConfig = Record<string, unknown>
@@ -620,18 +621,11 @@ export function DataSourcesPage() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      {/* Header */}
-      <div className="shrink-0 border-b border-border">
-        <div className="px-4 md:px-6 py-4 flex items-center justify-between">
-          <div>
-            <h2 className="text-base font-semibold text-text">Data Sources</h2>
-            <p className="text-[12px] text-text-muted mt-1">
-              Market data and news feed configuration.
-            </p>
-          </div>
-          <SaveIndicator status={status} onRetry={retry} />
-        </div>
-      </div>
+      <PageHeader
+        title="Data Sources"
+        description="Market data and news feed configuration."
+        right={<SaveIndicator status={status} onRetry={retry} />}
+      />
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-4 md:px-6 py-5">

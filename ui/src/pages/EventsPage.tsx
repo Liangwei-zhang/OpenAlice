@@ -231,7 +231,7 @@ function EventRow({ entry }: { entry: EventLogEntry }) {
   return (
     <>
       <tr
-        className="border-t border-border/50 hover:bg-bg-secondary/50 cursor-pointer"
+        className="border-t border-border/50 hover:bg-bg-tertiary/30 transition-colors cursor-pointer"
         onClick={() => isLong && setExpanded(!expanded)}
       >
         <td className="px-3 py-1.5 text-text-muted">{entry.seq}</td>

@@ -170,6 +170,19 @@ body,
   animation: fadeSlideIn 0.3s ease-out;
 }
 
+/* Page transition animation */
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.page-fade-in {
+  animation: pageFadeIn 150ms ease-out;
+}
+
 /* Code block wrapper for copy button */
 .code-block-wrapper {
   position: relative;
