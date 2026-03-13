@@ -82,17 +82,18 @@ describe('NewsCollectorStore', () => {
   })
 
   it('persists to JSONL and recovers on init', async () => {
+    const now = Date.now()
     await store.ingest({
       title: 'Article 1',
       content: 'Content 1',
-      pubTime: new Date('2026-02-27T10:00:00Z'),
+      pubTime: new Date(now - 60_000),
       dedupKey: 'guid:1',
       metadata: { source: 'test' },
     })
     await store.ingest({
       title: 'Article 2',
       content: 'Content 2',
-      pubTime: new Date('2026-02-27T11:00:00Z'),
+      pubTime: new Date(now - 30_000),
       dedupKey: 'guid:2',
       metadata: { source: 'test' },
     })
@@ -111,7 +112,7 @@ describe('NewsCollectorStore', () => {
     const dup = await store2.ingest({
       title: 'Article 1',
       content: 'Content 1',
-      pubTime: new Date('2026-02-27T10:00:00Z'),
+      pubTime: new Date(now - 60_000),
       dedupKey: 'guid:1',
       metadata: { source: 'test' },
     })

@@ -19,6 +19,7 @@ import { askClaudeCode } from './provider.js'
 
 export class ClaudeCodeProvider implements GenerateProvider {
   readonly inputKind = 'text' as const
+  readonly providerTag = 'claude-code' as const
 
   constructor(
     private systemPrompt?: string,
@@ -63,6 +64,9 @@ export class ClaudeCodeProvider implements GenerateProvider {
       onToolResult: ({ toolUseId, content }) => {
         media.push(...extractMediaFromToolResultContent(content))
         channel.push({ type: 'tool_result', tool_use_id: toolUseId, content })
+      },
+      onText: (text) => {
+        channel.push({ type: 'text', text })
       },
     })
 

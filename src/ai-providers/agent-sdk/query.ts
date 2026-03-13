@@ -30,6 +30,8 @@ export interface AgentSdkConfig {
   onToolUse?: (toolUse: { id: string; name: string; input: unknown }) => void
   /** Called for each tool_result in the stream. */
   onToolResult?: (toolResult: { toolUseId: string; content: string }) => void
+  /** Called for each intermediate text block in the stream. */
+  onText?: (text: string) => void
 }
 
 export interface AgentSdkOverride {
@@ -105,6 +107,7 @@ export async function askAgentSdk(
     systemPrompt,
     onToolUse,
     onToolResult,
+    onText,
   } = config
 
   // Merge: explicit config overrides mode defaults
@@ -161,6 +164,7 @@ export async function askAgentSdk(
               onToolUse?.({ id: block.id, name: block.name, input: block.input })
             } else if (block.type === 'text') {
               blocks.push({ type: 'text', text: block.text })
+              onText?.(block.text)
             }
           }
           if (blocks.length > 0) {

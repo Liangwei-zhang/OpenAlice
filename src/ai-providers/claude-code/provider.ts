@@ -64,6 +64,7 @@ export async function askClaudeCode(
     appendSystemPrompt,
     onToolUse,
     onToolResult,
+    onText,
   } = config
 
   // Merge: explicit config overrides mode defaults
@@ -131,6 +132,7 @@ export async function askClaudeCode(
                 onToolUse?.({ id: block.id, name: block.name, input: block.input })
               } else if (block.type === 'text') {
                 blocks.push({ type: 'text', text: block.text })
+                onText?.(block.text)
               }
             }
             if (blocks.length > 0) {

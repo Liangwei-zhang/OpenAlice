@@ -21,6 +21,7 @@ import { buildAgentSdkMcpServer } from './tool-bridge.js'
 
 export class AgentSdkProvider implements GenerateProvider {
   readonly inputKind = 'text' as const
+  readonly providerTag = 'agent-sdk' as const
 
   constructor(
     private getTools: () => Promise<Record<string, Tool>>,
@@ -78,6 +79,9 @@ export class AgentSdkProvider implements GenerateProvider {
         onToolResult: ({ toolUseId, content }) => {
           media.push(...extractMediaFromToolResultContent(content))
           channel.push({ type: 'tool_result', tool_use_id: toolUseId, content })
+        },
+        onText: (text) => {
+          channel.push({ type: 'text', text })
         },
       },
       override,
