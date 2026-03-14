@@ -7,7 +7,7 @@
  */
 
 import type { ModelMessage, Tool } from 'ai'
-import type { ProviderResult, ProviderEvent, GenerateProvider, GenerateInput, GenerateOpts } from '../types.js'
+import type { ProviderResult, ProviderEvent, AIProvider, GenerateInput, GenerateOpts } from '../types.js'
 import type { Agent } from './agent.js'
 import type { MediaAttachment } from '../../core/types.js'
 import { extractMediaFromToolOutput } from '../../core/media.js'
@@ -15,7 +15,7 @@ import { createModelFromConfig, type ModelOverride } from './model-factory.js'
 import { createAgent } from './agent.js'
 import { createChannel } from '../../core/async-channel.js'
 
-export class VercelAIProvider implements GenerateProvider {
+export class VercelAIProvider implements AIProvider {
   readonly inputKind = 'messages' as const
   readonly providerTag = 'vercel-ai' as const
   private cachedKey: string | null = null

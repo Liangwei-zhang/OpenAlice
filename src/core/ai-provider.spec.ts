@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { StreamableResult, type ProviderEvent, type ProviderResult, GenerateRouter, type GenerateProvider } from './ai-provider.js'
+import { StreamableResult, type ProviderEvent, type ProviderResult, GenerateRouter, type AIProvider } from './ai-provider.js'
 import { createChannel } from './async-channel.js'
 
 // ==================== Helpers ====================
@@ -130,7 +130,7 @@ describe('StreamableResult', () => {
 // ==================== GenerateRouter ====================
 
 describe('GenerateRouter', () => {
-  function makeProvider(tag: GenerateProvider['providerTag']): GenerateProvider {
+  function makeProvider(tag: AIProvider['providerTag']): AIProvider {
     return {
       inputKind: tag === 'vercel-ai' ? 'messages' : 'text',
       providerTag: tag,

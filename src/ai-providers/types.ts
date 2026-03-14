@@ -44,7 +44,7 @@ export interface GenerateOpts {
  * Does NOT touch session management. AgentCenter prepares the input,
  * the provider calls the backend and yields ProviderEvents.
  */
-export interface GenerateProvider {
+export interface AIProvider {
   /** Which input format this provider expects. */
   readonly inputKind: 'text' | 'messages'
   /** Session log provenance tag. */

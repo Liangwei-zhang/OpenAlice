@@ -1,16 +1,16 @@
 /**
  * AI Provider abstraction — StreamableResult + GenerateRouter.
  *
- * Provider interface types (GenerateProvider, ProviderEvent, etc.) live in
+ * Provider interface types (AIProvider, ProviderEvent, etc.) live in
  * ai-providers/types.ts alongside the implementations. This file holds the
  * core infrastructure that orchestrates providers.
  */
 
 import { readAIProviderConfig } from './config.js'
-import type { ProviderEvent, ProviderResult, GenerateProvider } from '../ai-providers/types.js'
+import type { ProviderEvent, ProviderResult, AIProvider } from '../ai-providers/types.js'
 
 export type {
-  ProviderEvent, ProviderResult, GenerateProvider,
+  ProviderEvent, ProviderResult, AIProvider,
   GenerateInput, GenerateOpts,
 } from '../ai-providers/types.js'
 
@@ -133,16 +133,16 @@ export interface AskOptions {
 
 // ==================== GenerateRouter ====================
 
-/** Reads runtime AI config and resolves to the correct GenerateProvider. */
+/** Reads runtime AI config and resolves to the correct AIProvider. */
 export class GenerateRouter {
   constructor(
-    private vercel: GenerateProvider,
-    private claudeCode: GenerateProvider | null,
-    private agentSdk: GenerateProvider | null = null,
+    private vercel: AIProvider,
+    private claudeCode: AIProvider | null,
+    private agentSdk: AIProvider | null = null,
   ) {}
 
   /** Resolve the active provider, optionally overridden per-request. */
-  async resolve(override?: string): Promise<GenerateProvider> {
+  async resolve(override?: string): Promise<AIProvider> {
     if (override === 'agent-sdk' && this.agentSdk) return this.agentSdk
     if (override === 'claude-code' && this.claudeCode) return this.claudeCode
     if (override === 'vercel-ai-sdk') return this.vercel

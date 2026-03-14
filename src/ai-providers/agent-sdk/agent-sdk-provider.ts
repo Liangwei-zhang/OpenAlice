@@ -10,14 +10,14 @@
 
 import { resolve } from 'node:path'
 import type { Tool } from 'ai'
-import type { ProviderResult, ProviderEvent, GenerateProvider, GenerateInput, GenerateOpts } from '../types.js'
+import type { ProviderResult, ProviderEvent, AIProvider, GenerateInput, GenerateOpts } from '../types.js'
 import type { AgentSdkConfig, AgentSdkOverride } from './query.js'
 import { readAgentConfig } from '../../core/config.js'
 import { createChannel } from '../../core/async-channel.js'
 import { askAgentSdk } from './query.js'
 import { buildAgentSdkMcpServer } from './tool-bridge.js'
 
-export class AgentSdkProvider implements GenerateProvider {
+export class AgentSdkProvider implements AIProvider {
   readonly inputKind = 'text' as const
   readonly providerTag = 'agent-sdk' as const
 

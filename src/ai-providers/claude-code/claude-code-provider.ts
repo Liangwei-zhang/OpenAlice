@@ -9,13 +9,13 @@
  */
 
 import { resolve } from 'node:path'
-import type { ProviderResult, ProviderEvent, GenerateProvider, GenerateInput, GenerateOpts } from '../types.js'
+import type { ProviderResult, ProviderEvent, AIProvider, GenerateInput, GenerateOpts } from '../types.js'
 import type { ClaudeCodeConfig } from './types.js'
 import { readAgentConfig } from '../../core/config.js'
 import { createChannel } from '../../core/async-channel.js'
 import { askClaudeCode } from './provider.js'
 
-export class ClaudeCodeProvider implements GenerateProvider {
+export class ClaudeCodeProvider implements AIProvider {
   readonly inputKind = 'text' as const
   readonly providerTag = 'claude-code' as const
 
