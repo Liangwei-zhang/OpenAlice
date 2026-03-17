@@ -322,16 +322,17 @@ NOTE: This stages the operation. Call tradingCommit + tradingPush to execute.`,
     }),
 
     tradingSync: tool({
-      description: 'Sync pending order statuses from broker (like "git pull").',
+      description: 'Sync pending order statuses from broker (like "git pull"). Use delayMs to wait before querying — exchanges may need a few seconds to settle after order placement.',
       inputSchema: z.object({
         source: z.string().optional().describe(sourceDesc(false, 'If omitted, syncs all accounts with pending orders.')),
+        delayMs: z.number().int().min(0).max(30_000).optional().describe('Wait this many ms before querying exchange. Default: 0. Recommended: 2000-5000 after market orders.'),
       }),
-      execute: async ({ source }) => {
+      execute: async ({ source, delayMs }) => {
         const targets = manager.resolve(source)
         const results: Array<Record<string, unknown>> = []
         for (const uta of targets) {
           if (uta.getPendingOrderIds().length === 0) continue
-          const result = await uta.sync()
+          const result = await uta.sync({ delayMs })
           if (result.updatedCount > 0) results.push({ source: uta.id, ...result })
         }
         if (results.length === 0) return { message: 'No pending orders to sync.', updatedCount: 0 }

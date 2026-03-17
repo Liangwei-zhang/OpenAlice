@@ -241,11 +241,14 @@ export class UnifiedTradingAccount {
     return this.git.status()
   }
 
-  async sync(): Promise<SyncResult> {
+  async sync(opts?: { delayMs?: number }): Promise<SyncResult> {
     const pendingOrders = this.git.getPendingOrderIds()
     if (pendingOrders.length === 0) {
       return { hash: '', updatedCount: 0, updates: [] }
     }
+
+    // Optional delay — gives exchange APIs time to settle before querying
+    if (opts?.delayMs) await new Promise(r => setTimeout(r, opts.delayMs))
 
     const updates: OrderStatusUpdate[] = []
 
