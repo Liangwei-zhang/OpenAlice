@@ -5,7 +5,8 @@
  */
 
 import { createHash } from 'crypto'
-import { UNSET_DOUBLE, UNSET_DECIMAL } from '@traderalice/ibkr'
+import Decimal from 'decimal.js'
+import { Order, UNSET_DOUBLE, UNSET_DECIMAL } from '@traderalice/ibkr'
 import type { ITradingGit, TradingGitConfig } from './interfaces.js'
 import type {
   CommitHash,
@@ -298,9 +299,54 @@ export class TradingGit implements ITradingGit {
 
   static restore(state: GitExportState, config: TradingGitConfig): TradingGit {
     const git = new TradingGit(config)
-    git.commits = [...state.commits]
+    git.commits = state.commits.map(TradingGit.rehydrateCommit)
     git.head = state.head
     return git
+  }
+
+  /** Rehydrate Decimal fields lost during JSON round-trip. */
+  private static rehydrateCommit(commit: GitCommit): GitCommit {
+    return {
+      ...commit,
+      operations: commit.operations.map(TradingGit.rehydrateOperation),
+      stateAfter: TradingGit.rehydrateGitState(commit.stateAfter),
+    }
+  }
+
+  private static rehydrateOperation(op: Operation): Operation {
+    switch (op.action) {
+      case 'placeOrder':
+        return {
+          ...op,
+          order: op.order ? TradingGit.rehydrateOrder(op.order) : op.order,
+        }
+      case 'closePosition':
+        return {
+          ...op,
+          quantity: op.quantity != null ? new Decimal(String(op.quantity)) : op.quantity,
+        }
+      default:
+        return op
+    }
+  }
+
+  private static rehydrateOrder(order: Order): Order {
+    const rehydrated = Object.assign(new Order(), order)
+    // totalQuantity is the critical Decimal field on Order
+    if (order.totalQuantity != null) {
+      rehydrated.totalQuantity = new Decimal(String(order.totalQuantity))
+    }
+    return rehydrated
+  }
+
+  private static rehydrateGitState(state: GitState): GitState {
+    return {
+      ...state,
+      positions: state.positions.map((pos) => ({
+        ...pos,
+        quantity: new Decimal(String(pos.quantity)),
+      })),
+    }
   }
 
   setCurrentRound(round: number): void {
