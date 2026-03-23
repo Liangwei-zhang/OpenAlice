@@ -24,7 +24,7 @@ Your one-person Wall Street. Alice is an AI trading agent that gives you your ow
 ## Features
 
 - **Multi-provider AI** — switch between Claude (via Agent SDK with OAuth or API key) and Vercel AI SDK at runtime, no restart needed
-- **Unified Trading Account (UTA)** — each trading account is a self-contained entity that owns its broker connection, git-like operation history, and guard pipeline. AI interacts with UTAs, never with brokers directly. All order types use IBKR's type system (`@traderalice/ibkr`) as the single source of truth, with Alpaca and CCXT adapting to it
+- **Unified Trading Account (UTA)** — each trading account is a self-contained entity that owns its broker connection, git-like operation history, and guard pipeline. AI interacts with UTAs, never with brokers directly. All order types use IBKR's type system (`@traderalice/ibkr`) as the single source of truth. Supported brokers: CCXT (100+ crypto exchanges), Alpaca (US equities), Interactive Brokers (stocks, options, futures, bonds via TWS/Gateway). Each broker self-registers its config schema and UI field descriptors — adding a new broker requires zero changes to the framework
 - **Trading-as-Git** — stage orders, commit with a message, push to execute. Every commit gets an 8-char hash. Full history reviewable via `tradingLog` / `tradingShow`
 - **Guard pipeline** — pre-execution safety checks (max position size, cooldown, symbol whitelist) that run inside each UTA before orders reach the broker
 - **Market data** — TypeScript-native OpenBB engine (`opentypebb`) with no external sidecar required. Covers equity, crypto, commodity, currency, and macro data with unified symbol search (`marketSearchForResearch`) and technical indicator calculator. Can also expose an embedded OpenBB-compatible HTTP API for external tools
@@ -43,7 +43,7 @@ Your one-person Wall Street. Alice is an AI trading agent that gives you your ow
 
 **Extension** — A self-contained tool package registered in ToolCenter. Each extension owns its tools, state, and persistence. Examples: trading, brain, analysis-kit.
 
-**UTA (Unified Trading Account)** — The core business entity for trading. Each UTA owns a broker connection (`IBroker`), a git-like operation history (`TradingGit`), and a guard pipeline. Think of it as a git repository for trades — multiple UTAs are like a monorepo with independent histories. AI and the frontend interact with UTAs exclusively; brokers are internal implementation details. All types (Contract, Order, Execution, OrderState) come from IBKR's type system via `@traderalice/ibkr`.
+**UTA (Unified Trading Account)** — The core business entity for trading. Each UTA owns a broker connection (`IBroker`), a git-like operation history (`TradingGit`), and a guard pipeline. Think of it as a git repository for trades — multiple UTAs are like a monorepo with independent histories. AI and the frontend interact with UTAs exclusively; brokers are internal implementation details. All types (Contract, Order, Execution, OrderState) come from IBKR's type system via `@traderalice/ibkr`. `AccountManager` owns the full UTA lifecycle (create, reconnect, enable/disable, remove).
 
 **Trading-as-Git** — The workflow inside each UTA. Stage operations (`stagePlaceOrder`, `stageClosePosition`, etc.), commit with a message, then push to execute. Push runs guards, dispatches to the broker, snapshots account state, and records a commit with an 8-char hash. Full history is reviewable via `tradingLog` / `tradingShow`.
 
@@ -165,17 +165,14 @@ All config lives in `data/config/` as JSON files with Zod validation. Missing fi
 
 **AI Provider** — The default provider is Claude (Agent SDK), which uses your local Claude Code login — no API key needed. To use the [Vercel AI SDK](https://sdk.vercel.ai/docs) instead (Anthropic, OpenAI, Google, etc.), switch `ai-provider.json` to `vercel-ai-sdk` and add your API key. Both can be switched at runtime via the Web UI.
 
-**Trading** — Unified Trading Account (UTA) architecture. Define platforms in `platforms.json` (CCXT exchanges, Alpaca), then create accounts in `accounts.json` referencing a platform. Each account becomes a UTA with its own git history and guard config. Legacy `crypto.json` and `securities.json` are still supported.
+**Trading** — Unified Trading Account (UTA) architecture. Each account in `accounts.json` becomes a UTA with its own broker connection, git history, and guard config. Broker-specific settings live in the `brokerConfig` field — each broker type declares its own schema and validates it internally.
 
 | File | Purpose |
 |------|---------|
 | `engine.json` | Trading pairs, tick interval, timeframe |
 | `agent.json` | Max agent steps, evolution mode toggle, Claude Code tool permissions |
 | `ai-provider.json` | Active AI provider (`agent-sdk` or `vercel-ai-sdk`), login method, switchable at runtime |
-| `platforms.json` | Trading platform definitions (CCXT exchanges, Alpaca) |
-| `accounts.json` | Trading account credentials and guard config, references platforms |
-| `crypto.json` | CCXT exchange config + API keys, allowed symbols, guards |
-| `securities.json` | Alpaca broker config + API keys, allowed symbols, guards |
+| `accounts.json` | Trading accounts with `type`, `enabled`, `guards`, and `brokerConfig` (broker-specific settings) |
 | `connectors.json` | Web/MCP server ports, MCP Ask enable |
 | `telegram.json` | Telegram bot credentials + enable |
 | `web-subchannels.json` | Web UI sub-channel definitions with per-channel AI provider overrides |
@@ -225,11 +222,17 @@ src/
     news/                    # RSS collector, archive search tools
     trading/                 # Unified Trading Account (UTA): brokers, git-like commits, guards, AI tool adapter
       UnifiedTradingAccount.ts  # UTA class — owns broker + git + guards
-      brokers/               # IBroker interface + Alpaca/CCXT implementations
+      account-manager.ts     # UTA lifecycle management (init, reconnect, enable/disable, remove) + registry
+      git-persistence.ts     # Git state load/save (commit history to disk)
+      brokers/               # IBroker interface + implementations
+        registry.ts          # Broker type registry (self-registration with config schema + UI fields)
+        factory.ts           # AccountConfig → IBroker (delegates to registry)
+        alpaca/              # Alpaca broker (US equities)
+        ccxt/                # CCXT broker (100+ crypto exchanges)
+        ibkr/                # Interactive Brokers (TWS/Gateway, callback→Promise bridge)
+        mock/                # In-memory test broker
       git/                   # Trading-as-Git engine (stage → commit → push)
       guards/                # Pre-execution safety checks (position size, cooldown, whitelist)
-      adapter.ts             # AI tool definitions (Zod schemas → UTA methods)
-      account-manager.ts     # Multi-UTA registry and routing
     thinking-kit/            # Reasoning and calculation tools
     brain/                   # Cognitive state (memory, emotion)
     browser/                 # Browser automation bridge (via OpenClaw)
@@ -273,7 +276,7 @@ Open Alice is in pre-release. The following items must land before the first sta
 
 - [ ] **Tool confirmation** — sensitive tools (order placement, cancellation, position close) require explicit user confirmation before execution, with a per-tool bypass mechanism for trusted workflows
 - [ ] **Trading-as-Git stable interface** — the UTA class and git workflow are functional; remaining work is serialization format (FIX-like tag-value encoding for Operation persistence) and the `tradingSync` polling loop
-- [ ] **IBKR broker** — Interactive Brokers integration via TWS API. The `@traderalice/ibkr` TypeScript SDK (full TWS protocol port) is complete; remaining work is implementing `IBroker` against it
+- [x] **IBKR broker** — Interactive Brokers integration via TWS/Gateway. `IbkrBroker` bridges the callback-based `@traderalice/ibkr` SDK to the Promise-based `IBroker` interface via `RequestBridge`. Supports all IBroker methods including conId-based contract resolution
 - [ ] **Account snapshot & analytics** — unified trading account snapshots with P&L breakdown, exposure analysis, and historical performance tracking
 
 ## Star History

@@ -22,7 +22,7 @@ src/
 │   ├── tool-center.ts         # Centralized tool registry (Vercel + MCP export)
 │   ├── session.ts             # JSONL session store
 │   ├── compaction.ts          # Auto-summarize long context windows
-│   ├── config.ts              # Zod-validated config loader
+│   ├── config.ts              # Zod-validated config loader (generic account schema with brokerConfig)
 │   ├── ai-config.ts           # Runtime AI provider selection
 │   ├── event-log.ts           # Append-only JSONL event log
 │   ├── connector-center.ts    # ConnectorCenter — push delivery + last-interacted tracking
@@ -37,6 +37,14 @@ src/
 ├── domain/
 │   ├── market-data/           # Structured data layer (typebb in-process + OpenBB API remote)
 │   ├── trading/               # Unified multi-account trading, guard pipeline, git-like commits
+│   │   ├── account-manager.ts # UTA lifecycle (init, reconnect, enable/disable) + registry
+│   │   ├── git-persistence.ts # Git state load/save
+│   │   └── brokers/
+│   │       ├── registry.ts    # Broker self-registration (configSchema + configFields + fromConfig)
+│   │       ├── alpaca/        # Alpaca (US equities)
+│   │       ├── ccxt/          # CCXT (100+ crypto exchanges)
+│   │       ├── ibkr/          # Interactive Brokers (TWS/Gateway)
+│   │       └── mock/          # In-memory test broker
 │   ├── analysis/              # Indicators, technical analysis, sandbox
 │   ├── news/                  # RSS collector + archive search
 │   ├── brain/                 # Cognitive state (memory, emotion)
