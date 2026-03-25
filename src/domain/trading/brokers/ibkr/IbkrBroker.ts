@@ -244,24 +244,24 @@ export class IbkrBroker implements IBroker {
 
   // ==================== Queries ====================
 
+  /**
+   * Get account summary.
+   *
+   * Data source: reqAccountUpdates → accountDownloadEnd callback.
+   *
+   * netLiquidation is reconstructed from cash + Σ(position.marketValue)
+   * because TWS's account-level NetLiquidation tag is cached server-side
+   * and refreshes less frequently than position-level data.
+   *
+   * Note: position marketPrice comes from updatePortfolio() callbacks,
+   * which TWS stops pushing after ~20:00 ET (see README.md "TWS Market
+   * Data Channels"). During overnight hours, the reconstructed netLiq
+   * will be stale even though Blue Ocean ATS prices may be moving.
+   */
   async getAccount(): Promise<AccountInfo> {
     const download = await this.downloadAccount()
 
-    // TotalCashValue is stable (cash doesn't change with market moves).
     const totalCashValue = parseFloat(download.values.get('TotalCashValue') ?? '0')
-
-    // Reconstruct netLiquidation and unrealizedPnL from position-level data.
-    //
-    // TWS's account-level tags (NetLiquidation, UnrealizedPnL) are cached
-    // server-side and may not refresh between market sessions. However, the
-    // updatePortfolio() callbacks that populate download.positions carry
-    // per-position marketPrice, marketValue, and unrealizedPnL that are
-    // more current.
-    //
-    // Formula: netLiq = cash + Σ(position.marketValue)
-    //
-    // When there are no positions, fall back to the TWS-reported value
-    // since cash-only accounts have accurate NetLiquidation.
     let totalMarketValue = 0
     let positionUnrealizedPnL = 0
     for (const pos of download.positions) {
@@ -289,6 +289,21 @@ export class IbkrBroker implements IBroker {
     }
   }
 
+  /**
+   * Get current positions with market prices.
+   *
+   * Data source: reqAccountUpdates → updatePortfolio() callbacks.
+   * Each position's marketPrice/marketValue comes from TWS's internal
+   * portfolio valuation, NOT from a real-time market data subscription.
+   *
+   * TWS controls the push frequency. During regular hours (09:30-16:00 ET)
+   * updates come every few seconds. After ~20:00 ET, updatePortfolio()
+   * stops pushing entirely — prices freeze even though overnight trading
+   * (Blue Ocean ATS) may be active. See README.md for details.
+   *
+   * To get fresher prices, use getQuote() which calls reqMktData in
+   * snapshot mode and can see overnight session data.
+   */
   async getPositions(): Promise<Position[]> {
     const download = await this.downloadAccount()
     return download.positions
@@ -323,6 +338,17 @@ export class IbkrBroker implements IBroker {
     }
   }
 
+  /**
+   * Get a one-time market data snapshot for a contract.
+   *
+   * Data source: reqMktData with snapshot=true → tickPrice/tickSize/
+   * tickSnapshotEnd callbacks. Unlike updatePortfolio(), this channel
+   * CAN return overnight session prices (Blue Ocean ATS) and is not
+   * limited to positions in the account.
+   *
+   * Each call briefly occupies one TWS market data line (limit ~100),
+   * auto-released after tickSnapshotEnd.
+   */
   async getQuote(contract: Contract): Promise<Quote> {
     if (!contract.exchange) contract.exchange = 'SMART'
     if (!contract.currency) contract.currency = 'USD'
