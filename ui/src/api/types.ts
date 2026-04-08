@@ -4,7 +4,6 @@ export type AIBackend = 'agent-sdk' | 'codex' | 'vercel-ai-sdk'
 
 export interface Profile {
   backend: AIBackend
-  label: string
   model: string
   loginMethod?: string
   provider?: string   // vercel-ai-sdk only
@@ -20,6 +19,7 @@ export interface Preset {
   description: string
   category: 'official' | 'third-party' | 'custom'
   hint?: string
+  defaultName: string
   schema: JsonSchema
 }
 

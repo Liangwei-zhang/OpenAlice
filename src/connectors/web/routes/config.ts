@@ -40,8 +40,8 @@ export function createConfigRoutes(opts?: ConfigRouteOpts) {
   app.post('/profiles', async (c) => {
     try {
       const body = await c.req.json<{ slug: string; profile: Profile }>()
-      if (!body.slug || !/^[a-z0-9-]+$/.test(body.slug)) {
-        return c.json({ error: 'slug must be lowercase alphanumeric with hyphens' }, 400)
+      if (!body.slug?.trim()) {
+        return c.json({ error: 'Profile name is required' }, 400)
       }
       const config = await readAIProviderConfig()
       if (config.profiles[body.slug]) {

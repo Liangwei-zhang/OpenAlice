@@ -22,6 +22,7 @@ export interface SerializedPreset {
   description: string
   category: 'official' | 'third-party' | 'custom'
   hint?: string
+  defaultName: string
   schema: Record<string, unknown>
 }
 
@@ -40,6 +41,7 @@ interface PresetDef {
   description: string
   category: 'official' | 'third-party' | 'custom'
   hint?: string
+  defaultName: string
   zodSchema: z.ZodType
   /** Models with human-readable labels. Post-processed into oneOf. */
   models?: ModelOption[]
@@ -87,9 +89,9 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'Claude (Subscription)',
     description: 'Use your Claude Pro/Max subscription',
     category: 'official',
+    defaultName: 'Claude (Pro/Max)',
     hint: 'Requires Claude Code CLI login. Run `claude login` in your terminal first.',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.literal('agent-sdk' as const),
       loginMethod: z.literal('claudeai' as const),
       model: z.string().optional().default('').describe('Leave empty to auto-select based on your plan'),
@@ -105,8 +107,8 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'Claude (API Key)',
     description: 'Pay per token via Anthropic API',
     category: 'official',
+    defaultName: 'Claude (API Key)',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.literal('agent-sdk' as const),
       loginMethod: z.literal('api-key' as const),
       model: z.string().default('claude-sonnet-4-6').describe('Model'),
@@ -126,9 +128,9 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'OpenAI / Codex (Subscription)',
     description: 'Use your ChatGPT subscription',
     category: 'official',
+    defaultName: 'OpenAI / Codex (Subscription)',
     hint: 'Requires Codex CLI login. Run `codex login` in your terminal first.',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.literal('codex' as const),
       loginMethod: z.literal('codex-oauth' as const),
       model: z.string().optional().default('gpt-5.4').describe('Leave empty to auto-select'),
@@ -144,8 +146,8 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'OpenAI (API Key)',
     description: 'Pay per token via OpenAI API',
     category: 'official',
+    defaultName: 'OpenAI (API Key)',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.literal('codex' as const),
       loginMethod: z.literal('api-key' as const),
       model: z.string().default('gpt-5.4').describe('Model'),
@@ -164,8 +166,8 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'Google Gemini',
     description: 'Google AI via API key',
     category: 'official',
+    defaultName: 'Google Gemini',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.literal('vercel-ai-sdk' as const),
       provider: z.literal('google' as const),
       model: z.string().default('gemini-2.5-flash').describe('Model'),
@@ -184,9 +186,9 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'MiniMax',
     description: 'MiniMax models via Anthropic-compatible API',
     category: 'third-party',
+    defaultName: 'MiniMax',
     hint: 'Get your API key at minimaxi.com',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.literal('vercel-ai-sdk' as const),
       provider: z.literal('anthropic' as const),
       baseUrl: z.literal('https://api.minimaxi.com/anthropic').describe('MiniMax API endpoint'),
@@ -205,8 +207,8 @@ const PRESET_DEFS: PresetDef[] = [
     label: 'Custom',
     description: 'Full control — any provider, model, and endpoint',
     category: 'custom',
+    defaultName: '',
     zodSchema: z.object({
-      label: z.string().min(1).describe('Profile name'),
       backend: z.enum(['agent-sdk', 'codex', 'vercel-ai-sdk']).default('vercel-ai-sdk').describe('Backend engine'),
       provider: z.string().optional().default('openai').describe('SDK provider (for Vercel AI SDK)'),
       loginMethod: z.string().optional().default('api-key').describe('Authentication method'),
@@ -226,5 +228,6 @@ export const BUILTIN_PRESETS: SerializedPreset[] = PRESET_DEFS.map(def => ({
   description: def.description,
   category: def.category,
   hint: def.hint,
+  defaultName: def.defaultName,
   schema: buildJsonSchema(def),
 }))

@@ -42,7 +42,6 @@ const apiKeysSchema = z.object({
 })
 
 const baseProfileFields = {
-  label: z.string().min(1),
   baseUrl: z.string().optional(),
   apiKey: z.string().optional(),
 }
@@ -80,7 +79,7 @@ export const aiProviderSchema = z.object({
     z.string(),
     profileSchema,
   ).default({
-    default: { backend: 'agent-sdk', label: 'Claude Sonnet', model: 'claude-sonnet-4-6', loginMethod: 'claudeai' },
+    default: { backend: 'agent-sdk', model: 'claude-sonnet-4-6', loginMethod: 'claudeai' },
   }),
   activeProfile: z.string().default('default'),
 })
@@ -583,10 +582,9 @@ export async function readConnectorsConfig() {
 
 // ==================== Profile Helpers ====================
 
-/** Resolved profile with apiKey filled from global keys. */
+/** Resolved profile — all fields needed by providers. */
 export interface ResolvedProfile {
   backend: AIBackend
-  label: string
   model: string
   apiKey?: string
   baseUrl?: string

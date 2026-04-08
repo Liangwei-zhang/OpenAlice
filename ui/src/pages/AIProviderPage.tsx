@@ -69,7 +69,7 @@ export function AIProviderPage() {
                 <div className="text-text-muted">{BACKEND_ICONS[profile.backend]}</div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[13px] font-semibold text-text truncate">{profile.label}</span>
+                    <span className="text-[13px] font-semibold text-text truncate">{slug}</span>
                     {isActive && <span className="text-[10px] px-1.5 py-0.5 rounded bg-accent/20 text-accent font-medium shrink-0">Active</span>}
                   </div>
                   <p className="text-[11px] text-text-muted truncate">{profile.model || 'Auto (subscription plan)'}</p>
@@ -141,7 +141,7 @@ function ProfileEditModal({ slug, profile, presets, isActive, onSave, onDelete, 
   }
 
   return (
-    <Modal title={`Edit: ${profile.label}`} onClose={onClose}>
+    <Modal title={`Edit: ${slug}`} onClose={onClose}>
       <div className="space-y-3">
         {preset?.hint && <p className="text-[11px] text-text-muted bg-bg-tertiary rounded-lg p-3 leading-relaxed">{preset.hint}</p>}
         <SchemaForm schema={preset?.schema} formData={formData} onChange={setFormData} existingProfile={profile} />
@@ -162,34 +162,33 @@ function ProfileCreateModal({ presets, onSave, onClose }: {
   presets: Preset[]; onSave: (slug: string, profile: Profile) => Promise<void>; onClose: () => void
 }) {
   const [selectedPreset, setSelectedPreset] = useState<Preset | null>(null)
+  const [name, setName] = useState('')
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
   const selectPreset = (preset: Preset) => {
     setSelectedPreset(preset)
+    setName(preset.defaultName)
     setFormData(extractDefaults(preset.schema))
     setError('')
   }
 
   const handleCreate = async () => {
     if (!selectedPreset) return
-    const label = formData.label?.trim()
-    if (!label) { setError('Profile name is required'); return }
-    // Check required fields
+    const trimmedName = name.trim()
+    if (!trimmedName) { setError('Profile name is required'); return }
+    // Check required fields from schema
     const required = (selectedPreset.schema.required as string[] | undefined) ?? []
     for (const field of required) {
-      if (field === 'label') continue
       const prop = (selectedPreset.schema.properties as Record<string, JsonSchemaProperty>)?.[field]
       if (prop?.const !== undefined) continue // const fields are auto-filled
       if (!formData[field]?.trim()) { setError(`${prop?.title ?? field} is required`); return }
     }
     setSaving(true); setError('')
-    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-    if (!slug) { setError('Invalid name'); setSaving(false); return }
     try {
       const merged = mergeFormWithConsts(formData, selectedPreset.schema)
-      await onSave(slug, merged as unknown as Profile)
+      await onSave(trimmedName, merged as unknown as Profile)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create')
     } finally { setSaving(false) }
@@ -245,6 +244,9 @@ function ProfileCreateModal({ presets, onSave, onClose }: {
       ) : (
         <div className="space-y-3">
           {selectedPreset.hint && <p className="text-[11px] text-text-muted bg-bg-tertiary rounded-lg p-3 leading-relaxed">{selectedPreset.hint}</p>}
+          <Field label="Profile Name">
+            <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. My Claude" autoFocus />
+          </Field>
           <SchemaForm schema={selectedPreset.schema} formData={formData} onChange={setFormData} />
           {error && <p className="text-[12px] text-red">{error}</p>}
           <div className="flex items-center gap-2 pt-2 border-t border-border mt-4">
