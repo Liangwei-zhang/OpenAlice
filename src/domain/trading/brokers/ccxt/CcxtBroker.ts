@@ -141,15 +141,13 @@ export class CcxtBroker implements IBroker<CcxtBrokerMeta> {
       throw new BrokerError('CONFIG', `Unknown CCXT exchange: ${config.exchange}`)
     }
 
-    // Default: skip option markets to reduce concurrent requests during loadMarkets
-    const defaultOptions: Record<string, unknown> = {
-      fetchMarkets: { types: ['spot', 'linear', 'inverse'] },
-    }
-    const mergedOptions = { ...defaultOptions, ...config.options }
-
     // Pass through all CCXT standard credential fields. CCXT ignores undefined.
+    // Do NOT override the exchange's default fetchMarkets.types — each exchange
+    // has its own (e.g. bybit: spot/linear/inverse/option, hyperliquid: spot/swap/hip3).
+    // The init() wrapper below handles option-skipping uniformly via type filtering.
     const cfgRecord = config as unknown as Record<string, unknown>
-    const credentials: Record<string, unknown> = { options: mergedOptions }
+    const credentials: Record<string, unknown> = {}
+    if (config.options !== undefined) credentials.options = config.options
     for (const field of CCXT_CREDENTIAL_FIELDS) {
       const v = cfgRecord[field]
       if (v !== undefined) credentials[field] = v
@@ -202,7 +200,13 @@ export class CcxtBroker implements IBroker<CcxtBrokerMeta> {
       const ex = this.exchange as unknown as Record<string, unknown>
       const opts = (ex['options'] ?? {}) as Record<string, unknown>
       const fmOpts = (opts['fetchMarkets'] ?? {}) as Record<string, unknown>
-      const types = (fmOpts['types'] ?? ['spot', 'linear', 'inverse']) as string[]
+      // Use the exchange's own default types (set in its CCXT class describe()).
+      // Skip 'option' type — option markets are typically thousands of contracts
+      // (Bybit alone has ~10k+) and rarely useful for automated trading.
+      const allTypes = (fmOpts['types'] ?? []) as string[]
+      const types = allTypes.length > 0
+        ? allTypes.filter(t => t !== 'option')
+        : ['spot', 'linear', 'inverse'] // fallback for exchanges that don't declare types
 
       const allMarkets: unknown[] = []
       for (const type of types) {
@@ -258,6 +262,8 @@ export class CcxtBroker implements IBroker<CcxtBrokerMeta> {
 
     for (const market of Object.values(this.markets)) {
       if (market.active === false) continue
+      // Some exchanges (e.g. hyperliquid spot) have markets without base/quote populated
+      if (!market.base || !market.quote) continue
       if (market.base.toUpperCase() !== searchBase) continue
 
       const quote = market.quote.toUpperCase()
@@ -274,8 +280,8 @@ export class CcxtBroker implements IBroker<CcxtBrokerMeta> {
       const aType = typeOrder[a.type as keyof typeof typeOrder] ?? 99
       const bType = typeOrder[b.type as keyof typeof typeOrder] ?? 99
       if (aType !== bType) return aType - bType
-      const aQuote = quoteOrder[a.quote.toUpperCase()] ?? 99
-      const bQuote = quoteOrder[b.quote.toUpperCase()] ?? 99
+      const aQuote = quoteOrder[(a.quote ?? '').toUpperCase()] ?? 99
+      const bQuote = quoteOrder[(b.quote ?? '').toUpperCase()] ?? 99
       return aQuote - bQuote
     })
 
