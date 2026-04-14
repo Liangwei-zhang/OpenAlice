@@ -141,6 +141,23 @@ export interface NewsCollectorConfig {
   feeds: NewsCollectorFeed[]
 }
 
+// ==================== News Articles ====================
+
+export interface NewsArticle {
+  time: string
+  title: string
+  content: string
+  source: string | null
+  link: string | null
+  categories: string | null
+}
+
+export interface NewsListResponse {
+  items: NewsArticle[]
+  count: number
+  lookback: string
+}
+
 // ==================== Events ====================
 
 export interface EventLogEntry {

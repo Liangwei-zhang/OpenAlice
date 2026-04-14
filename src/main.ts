@@ -411,6 +411,7 @@ async function main() {
     config, connectorCenter, agentCenter, eventLog, toolCallLog, heartbeat, cronEngine, toolCenter,
     bbEngine: getSDKExecutor(),
     accountManager, fxService, snapshotService,
+    newsProvider: newsStore,
     reconnectConnectors,
   }
 
