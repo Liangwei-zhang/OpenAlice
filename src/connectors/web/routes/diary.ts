@@ -1,5 +1,5 @@
 /**
- * Activity route — exposes the heartbeat session as a read-only status feed.
+ * Diary route — exposes the heartbeat session as a read-only status feed.
  *
  * This is the "status" surface (as opposed to the Chat "notification" surface):
  * a passive view of what Alice has been thinking across recent heartbeat cycles,
@@ -25,7 +25,7 @@ import type {
 
 // ==================== Types ====================
 
-export type ActivityOutcome =
+export type DiaryOutcome =
   | 'delivered'      // heartbeat.done, delivered=true — CHAT_YES pushed to Chat
   | 'silent-ok'      // heartbeat.done delivered=false, or skip.reason=ack — silent HEARTBEAT_OK
   | 'duplicate'      // skip.reason=duplicate — same content as recent cycle
@@ -33,17 +33,17 @@ export type ActivityOutcome =
   | 'outside-hours'  // skip.reason=outside-active-hours — quiet-hours guard tripped
   | 'error'          // heartbeat.error — AI call threw
 
-export interface ActivityCycle {
+export interface DiaryCycle {
   seq: number
   ts: number
-  outcome: ActivityOutcome
+  outcome: DiaryOutcome
   reason?: string
   durationMs?: number
 }
 
-export interface ActivityHistoryResponse {
+export interface DiaryHistoryResponse {
   items: ChatHistoryItem[]
-  cycles: ActivityCycle[]
+  cycles: DiaryCycle[]
   latestSeq: number
 }
 
@@ -73,7 +73,7 @@ function getHeartbeatSession(): SessionStore {
 // ==================== Event → cycle mapping ====================
 
 /** Classify a heartbeat event into a user-visible outcome. */
-export function outcomeFromEvent(entry: EventLogEntry): ActivityOutcome {
+export function outcomeFromEvent(entry: EventLogEntry): DiaryOutcome {
   if (entry.type === 'heartbeat.done') {
     return (entry.payload as HeartbeatDonePayload).delivered ? 'delivered' : 'silent-ok'
   }
@@ -92,7 +92,7 @@ export function outcomeFromEvent(entry: EventLogEntry): ActivityOutcome {
 }
 
 /** Project event-log entries into display cycles. */
-export function buildActivityCycles(events: EventLogEntry[]): ActivityCycle[] {
+export function buildDiaryCycles(events: EventLogEntry[]): DiaryCycle[] {
   return events.map((e) => {
     const outcome = outcomeFromEvent(e)
     let reason: string | undefined
@@ -118,7 +118,7 @@ export function buildActivityCycles(events: EventLogEntry[]): ActivityCycle[] {
 
 // ==================== Route factory ====================
 
-export function createActivityRoutes(ctx: EngineContext) {
+export function createDiaryRoutes(ctx: EngineContext) {
   const app = new Hono()
 
   /**
@@ -132,13 +132,15 @@ export function createActivityRoutes(ctx: EngineContext) {
     const limit = clamp(Number(c.req.query('limit')) || 100, 1, 500)
     const afterSeq = Math.max(0, Number(c.req.query('afterSeq')) || 0)
 
-    // Gather heartbeat events from the in-memory ring buffer.
-    const events: EventLogEntry[] = []
-    for (const type of HEARTBEAT_EVENT_TYPES) {
-      events.push(...ctx.eventLog.recent({ afterSeq, type }))
-    }
-    events.sort((a, b) => a.seq - b.seq)
-    const cycles = buildActivityCycles(events).slice(-limit)
+    // Read from disk, not the in-memory ring buffer.
+    // The ring buffer (~500 entries) gets saturated by high-frequency events
+    // (snapshot.skipped, account.health), evicting older heartbeat entries —
+    // the activity we care about here fires only ~every 30min.
+    // One disk scan with in-memory type filtering is cheaper than three.
+    const allEvents = await ctx.eventLog.read({ afterSeq })
+    const eventTypes = new Set<string>(HEARTBEAT_EVENT_TYPES)
+    const events = allEvents.filter((e) => eventTypes.has(e.type))
+    const cycles = buildDiaryCycles(events).slice(-limit)
 
     // Read heartbeat session entries.
     const session = getHeartbeatSession()
@@ -158,7 +160,7 @@ export function createActivityRoutes(ctx: EngineContext) {
       items = toChatHistory(capped)
     }
 
-    const response: ActivityHistoryResponse = {
+    const response: DiaryHistoryResponse = {
       items,
       cycles,
       latestSeq: ctx.eventLog.lastSeq(),

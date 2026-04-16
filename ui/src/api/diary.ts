@@ -1,6 +1,6 @@
 import type { ChatHistoryItem } from './types'
 
-export type ActivityOutcome =
+export type DiaryOutcome =
   | 'delivered'
   | 'silent-ok'
   | 'duplicate'
@@ -8,28 +8,28 @@ export type ActivityOutcome =
   | 'outside-hours'
   | 'error'
 
-export interface ActivityCycle {
+export interface DiaryCycle {
   seq: number
   ts: number
-  outcome: ActivityOutcome
+  outcome: DiaryOutcome
   reason?: string
   durationMs?: number
 }
 
-export interface ActivityHistoryResponse {
+export interface DiaryHistoryResponse {
   items: ChatHistoryItem[]
-  cycles: ActivityCycle[]
+  cycles: DiaryCycle[]
   latestSeq: number
 }
 
-export const activityApi = {
-  async history(opts?: { limit?: number; afterSeq?: number }): Promise<ActivityHistoryResponse> {
+export const diaryApi = {
+  async history(opts?: { limit?: number; afterSeq?: number }): Promise<DiaryHistoryResponse> {
     const params = new URLSearchParams()
     if (opts?.limit !== undefined) params.set('limit', String(opts.limit))
     if (opts?.afterSeq !== undefined) params.set('afterSeq', String(opts.afterSeq))
     const qs = params.toString()
-    const res = await fetch(`/api/activity/history${qs ? `?${qs}` : ''}`)
-    if (!res.ok) throw new Error('Failed to load activity history')
+    const res = await fetch(`/api/diary/history${qs ? `?${qs}` : ''}`)
+    if (!res.ok) throw new Error('Failed to load diary history')
     return res.json()
   },
 }

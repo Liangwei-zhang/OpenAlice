@@ -1,7 +1,7 @@
 /**
- * Tests for the activity route's event-log → cycle projection.
+ * Tests for the diary route's event-log → cycle projection.
  *
- * The HTTP endpoint itself is a thin wrapper around `buildActivityCycles` +
+ * The HTTP endpoint itself is a thin wrapper around `buildDiaryCycles` +
  * `session.readActive()` + `toChatHistory()`. The join/filter logic that's
  * worth locking in is event-type → outcome classification and reason
  * selection.
@@ -9,10 +9,10 @@
 
 import { describe, it, expect } from 'vitest'
 import {
-  buildActivityCycles,
+  buildDiaryCycles,
   outcomeFromEvent,
-  type ActivityOutcome,
-} from '../routes/activity.js'
+  type DiaryOutcome,
+} from '../routes/diary.js'
 import type { EventLogEntry } from '../../../core/event-log.js'
 
 // ==================== Fixtures ====================
@@ -35,7 +35,7 @@ const err = (seq: number, ts: number, error: string, durationMs = 50): EventLogE
 // ==================== Tests ====================
 
 describe('outcomeFromEvent', () => {
-  const cases: Array<[string, EventLogEntry, ActivityOutcome]> = [
+  const cases: Array<[string, EventLogEntry, DiaryOutcome]> = [
     ['heartbeat.done delivered=true → "delivered"', done(1, 0, true), 'delivered'],
     ['heartbeat.done delivered=false → "silent-ok"', done(1, 0, false), 'silent-ok'],
     ['heartbeat.skip reason=ack → "silent-ok"', skip(1, 0, 'ack'), 'silent-ok'],
@@ -54,9 +54,9 @@ describe('outcomeFromEvent', () => {
   })
 })
 
-describe('buildActivityCycles', () => {
+describe('buildDiaryCycles', () => {
   it('surfaces error message as reason for heartbeat.error', () => {
-    const cycles = buildActivityCycles([err(5, 1000, 'network timeout', 250)])
+    const cycles = buildDiaryCycles([err(5, 1000, 'network timeout', 250)])
     expect(cycles[0]).toMatchObject({
       seq: 5,
       ts: 1000,
@@ -68,17 +68,17 @@ describe('buildActivityCycles', () => {
 
   it('prefers parsedReason over machine reason for skip events', () => {
     // parsedReason is the AI's own wording — more useful to show humans than the machine code "ack".
-    const cycles = buildActivityCycles([skip(5, 1000, 'ack', 'market is quiet, watching for a breakout')])
+    const cycles = buildDiaryCycles([skip(5, 1000, 'ack', 'market is quiet, watching for a breakout')])
     expect(cycles[0].reason).toBe('market is quiet, watching for a breakout')
   })
 
   it('falls back to reason when parsedReason is missing', () => {
-    const cycles = buildActivityCycles([skip(5, 1000, 'duplicate')])
+    const cycles = buildDiaryCycles([skip(5, 1000, 'duplicate')])
     expect(cycles[0].reason).toBe('duplicate')
   })
 
   it('preserves input ordering (caller is responsible for sorting)', () => {
-    const cycles = buildActivityCycles([
+    const cycles = buildDiaryCycles([
       done(3, 3000, true),
       skip(1, 1000, 'ack'),
       err(2, 2000, 'boom'),
@@ -87,7 +87,7 @@ describe('buildActivityCycles', () => {
   })
 
   it('includes durationMs for done and error, omits for skip', () => {
-    const cycles = buildActivityCycles([
+    const cycles = buildDiaryCycles([
       done(1, 0, true, 'x', 150),
       skip(2, 0, 'ack'),
       err(3, 0, 'oops', 42),
@@ -100,7 +100,7 @@ describe('buildActivityCycles', () => {
   it('omits reason for done when the payload reason is empty', () => {
     // heartbeat.done stores its reason even on delivered cycles; an empty string
     // would render as a blank tag, which is noise.
-    const cycles = buildActivityCycles([done(1, 0, true, '', 100)])
+    const cycles = buildDiaryCycles([done(1, 0, true, '', 100)])
     expect(cycles[0].reason).toBeUndefined()
   })
 })
