@@ -31,12 +31,15 @@ function getModelOptions(profile: Profile, presets: Preset[]): Array<{ id: strin
 
 // ==================== Main Page ====================
 
+type TestState = { status: 'idle' | 'testing' | 'ok' | 'fail'; error?: string }
+
 export function AIProviderPage() {
   const [profiles, setProfiles] = useState<Record<string, Profile> | null>(null)
   const [activeProfile, setActiveProfile] = useState('')
   const [presets, setPresets] = useState<Preset[]>([])
   const [editingSlug, setEditingSlug] = useState<string | null>(null)
   const [showCreate, setShowCreate] = useState(false)
+  const [testStates, setTestStates] = useState<Record<string, TestState>>({})
 
   useEffect(() => {
     api.config.getProfiles().then(({ profiles: p, activeProfile: a }) => {
@@ -67,6 +70,23 @@ export function AIProviderPage() {
   const handleProfileUpdate = async (slug: string, profile: Profile) => {
     await api.config.updateProfile(slug, profile)
     setProfiles((p) => p ? { ...p, [slug]: profile } : p)
+  }
+
+  const handleTest = async (slug: string, profile: Profile) => {
+    setTestStates(s => ({ ...s, [slug]: { status: 'testing' } }))
+    try {
+      const result = await api.config.testProfile(profile)
+      if (result.ok) {
+        setTestStates(s => ({ ...s, [slug]: { status: 'ok' } }))
+        setTimeout(() => setTestStates(s => ({ ...s, [slug]: { status: 'idle' } })), 2500)
+      } else {
+        setTestStates(s => ({ ...s, [slug]: { status: 'fail', error: result.error } }))
+        setTimeout(() => setTestStates(s => ({ ...s, [slug]: { status: 'idle' } })), 6000)
+      }
+    } catch (err) {
+      setTestStates(s => ({ ...s, [slug]: { status: 'fail', error: err instanceof Error ? err.message : 'Test failed' } }))
+      setTimeout(() => setTestStates(s => ({ ...s, [slug]: { status: 'idle' } })), 6000)
+    }
   }
 
   const handleInlineModelChange = async (slug: string, profile: Profile, newModel: string) => {
@@ -115,6 +135,25 @@ export function AIProviderPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 shrink-0">
+                  {(() => {
+                    const ts = testStates[slug] ?? { status: 'idle' as const }
+                    const label = ts.status === 'testing' ? 'Testing…' : ts.status === 'ok' ? 'OK' : ts.status === 'fail' ? 'Failed' : 'Test'
+                    const color = ts.status === 'ok'
+                      ? 'text-green border-green/40'
+                      : ts.status === 'fail'
+                        ? 'text-red border-red/40'
+                        : 'text-text-muted border-border hover:text-text hover:bg-bg-tertiary'
+                    return (
+                      <button
+                        onClick={() => handleTest(slug, profile)}
+                        disabled={ts.status === 'testing'}
+                        title={ts.status === 'fail' ? ts.error : 'Send "Hi" to verify connectivity'}
+                        className={`text-[11px] px-2 py-1 rounded-md border transition-colors ${color}`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })()}
                   {!isActive && <button onClick={() => handleSetActive(slug)} className="text-[11px] px-2 py-1 rounded-md border border-border text-text-muted hover:text-accent hover:border-accent transition-colors">Set Default</button>}
                   <button onClick={() => setEditingSlug(slug)} className="text-[11px] px-2 py-1 rounded-md border border-border text-text-muted hover:text-text hover:bg-bg-tertiary transition-colors">Edit</button>
                 </div>
@@ -218,25 +257,43 @@ function ProfileEditModal({ slug, profile, presets, isActive, onSave, onDelete, 
 
   const { fields, formData, setField, getSubmitData, validate } = useSchemaForm(preset.schema, profileData)
   const [status, setStatus] = useState<SaveStatus>('idle')
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; response?: string; error?: string } | null>(null)
   const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => () => { if (savedTimer.current) clearTimeout(savedTimer.current) }, [])
+
+  const buildSubmitData = () => {
+    const data = getSubmitData()
+    if (!data.apiKey && profile.apiKey) data.apiKey = profile.apiKey
+    data.preset = profile.preset
+    return data as unknown as Profile
+  }
 
   const handleSave = async () => {
     const error = validate()
     if (error) return
     setStatus('saving')
     try {
-      const data = getSubmitData()
-      // Preserve existing apiKey if user didn't enter a new one
-      if (!data.apiKey && profile.apiKey) data.apiKey = profile.apiKey
-      // Preserve preset association
-      data.preset = profile.preset
-      await onSave(data as unknown as Profile)
+      await onSave(buildSubmitData())
       setStatus('saved')
       if (savedTimer.current) clearTimeout(savedTimer.current)
       savedTimer.current = setTimeout(() => { setStatus('idle'); onClose() }, 1000)
     } catch { setStatus('error') }
+  }
+
+  const handleTest = async () => {
+    const error = validate()
+    if (error) return
+    setTesting(true); setTestResult(null)
+    try {
+      const result = await api.config.testProfile(buildSubmitData())
+      setTestResult(result)
+    } catch (err) {
+      setTestResult({ ok: false, error: err instanceof Error ? err.message : 'Test failed' })
+    } finally {
+      setTesting(false)
+    }
   }
 
   return (
@@ -244,8 +301,17 @@ function ProfileEditModal({ slug, profile, presets, isActive, onSave, onDelete, 
       <div className="space-y-3">
         {preset.hint && <p className="text-[11px] text-text-muted bg-bg-tertiary rounded-lg p-3 leading-relaxed">{preset.hint}</p>}
         <SchemaFormFields fields={fields} formData={formData} setField={setField} existingProfile={profile} />
+        {testing && <p className="text-[12px] text-text-muted">Testing connection…</p>}
+        {testResult && (
+          <div className={`text-[12px] rounded-lg p-3 ${testResult.ok ? 'bg-green/10 text-green' : 'bg-red/10 text-red'}`}>
+            {testResult.ok ? `Connected: "${testResult.response?.slice(0, 100)}"` : `Failed: ${testResult.error}`}
+          </div>
+        )}
         <div className="flex items-center gap-2 pt-2 border-t border-border mt-4">
           <button onClick={handleSave} className="btn-primary">Save</button>
+          <button onClick={handleTest} disabled={testing} className="text-[12px] px-3 py-1.5 rounded-md border border-border text-text-muted hover:text-text hover:bg-bg-tertiary transition-colors disabled:opacity-50">
+            {testing ? 'Testing…' : 'Test'}
+          </button>
           <SaveIndicator status={status} onRetry={handleSave} />
           <div className="flex-1" />
           {!isActive && <button onClick={onDelete} className="text-[12px] text-red hover:underline">Delete</button>}

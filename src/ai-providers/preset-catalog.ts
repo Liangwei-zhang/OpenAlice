@@ -214,7 +214,7 @@ export const KIMI: PresetDef = {
     backend: z.literal('agent-sdk'),
     loginMethod: z.literal('api-key'),
     baseUrl: z.string().default('https://api.moonshot.cn/anthropic').describe('API endpoint'),
-    model: z.string().default('kimi-k2.5').describe('Model'),
+    model: z.string().default('kimi-k2.6').describe('Model'),
     apiKey: z.string().min(1).describe('Moonshot API key'),
   }),
   endpoints: [
@@ -222,6 +222,7 @@ export const KIMI: PresetDef = {
     { id: 'https://api.moonshot.ai/anthropic', label: 'International (moonshot.ai)' },
   ],
   models: [
+    { id: 'kimi-k2.6', label: 'Kimi K2.6' },
     { id: 'kimi-k2.5', label: 'Kimi K2.5' },
   ],
   writeOnlyFields: ['apiKey'],
