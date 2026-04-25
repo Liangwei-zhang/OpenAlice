@@ -1,16 +1,19 @@
 {
   "name": "open-alice",
   "version": "0.9.0-beta.13",
-  "description": "File-based trading agent engine",
+  "description": "AI equity research assistant with focus-watchlist scoring",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "pnpm dev:research",
+    "dev:full": "tsx watch src/main.ts",
     "dev:research": "tsx watch src/research-main.ts",
     "dev:ui": "pnpm --filter open-alice-ui dev",
-    "predev": "turbo run build --filter=@traderalice/opentypebb --filter=@traderalice/ibkr",
-    "build": "turbo run build && tsup src/main.ts --format esm --dts && tsup src/research-main.ts --format esm --dts --out-dir dist/research",
+    "predev:full": "turbo run build --filter=@traderalice/opentypebb --filter=@traderalice/ibkr",
+    "build": "pnpm build:research",
+    "build:full": "turbo run build && tsup src/main.ts --format esm --dts && tsup src/research-main.ts --format esm --dts --out-dir dist/research",
     "build:research": "turbo run build --filter=@traderalice/opentypebb && tsup src/research-main.ts --format esm --dts --out-dir dist/research",
-    "start": "node dist/main.js",
+    "start": "pnpm start:research",
+    "start:full": "node dist/main.js",
     "start:research": "node dist/research/research-main.js",
     "test": "vitest run",
     "test:e2e": "vitest run --config vitest.e2e.config.ts",
@@ -18,11 +21,11 @@
     "test:watch": "vitest"
   },
   "keywords": [
-    "trading",
+    "equity-research",
     "ai-agent",
-    "crypto",
-    "securities",
-    "file-driven"
+    "stock-analysis",
+    "watchlist",
+    "technical-analysis"
   ],
   "author": "OpenAlice Contributors",
   "license": "AGPL-3.0-only",
