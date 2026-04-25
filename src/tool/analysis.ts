@@ -12,6 +12,7 @@ import type { EquityClientLike, CryptoClientLike, CurrencyClientLike, CommodityC
 import { IndicatorCalculator } from '@/domain/analysis/indicator/calculator'
 import type { IndicatorContext, OhlcvData, HistoricalDataResult, DataSourceMeta } from '@/domain/analysis/indicator/types'
 import { buildEquityTrendScore } from '@/domain/analysis/equity-trend-predictor'
+import { FOCUS_EQUITY_WATCHLIST, FOCUS_EQUITY_WATCHLIST_NAME } from '@/domain/analysis/focus-watchlist'
 
 /** 根据 interval 决定拉取的日历天数（约 1 倍冗余） */
 function getCalendarDays(interval: string): number {
@@ -86,7 +87,7 @@ function buildContext(
 
 async function scoreEquitySymbols(
   equityClient: EquityClientLike,
-  symbols: string[],
+  symbols: readonly string[],
   interval: '1d',
   horizonDays: number,
 ) {
@@ -121,6 +122,40 @@ async function scoreEquitySymbols(
 
   results.sort((a, b) => b.score - a.score)
   return { results, errors }
+}
+
+function buildRankingPayload(
+  params: {
+    model: string
+    horizonDays: number
+    universeName?: string
+    universeSize: number
+    topN: number
+    minScore: number
+    includeBearish: boolean
+    results: Array<{ score: number }>
+    errors: Array<Record<string, unknown>>
+  },
+) {
+  const bullish = params.results
+    .filter((item) => item.score >= params.minScore)
+    .slice(0, params.topN)
+  const bearish = params.includeBearish
+    ? [...params.results].sort((a, b) => a.score - b.score).slice(0, params.topN)
+    : undefined
+
+  return {
+    model: params.model,
+    horizonDays: params.horizonDays,
+    ...(params.universeName ? { universeName: params.universeName } : {}),
+    universeSize: params.universeSize,
+    scoredCount: params.results.length,
+    topN: params.topN,
+    bullish,
+    ...(bearish ? { bearish } : {}),
+    errors: params.errors,
+    nextStep: 'Use equityGetProfile, equityGetEarningsCalendar, news archive, and trading guards before staging any trade.',
+  }
 }
 
 export function createAnalysisTools(
@@ -208,24 +243,44 @@ model as predictEquityTrend, then applies topN and optional minimum score filter
       }),
       execute: async ({ symbols, topN, minScore, includeBearish, horizonDays }) => {
         const { results, errors } = await scoreEquitySymbols(equityClient, symbols, '1d', horizonDays)
-        const bullish = results
-          .filter((item) => item.score >= minScore)
-          .slice(0, topN)
-        const bearish = includeBearish
-          ? [...results].sort((a, b) => a.score - b.score).slice(0, topN)
-          : undefined
-
-        return {
+        return buildRankingPayload({
           model: 'openalice-equity-trend-heuristic-v1',
           horizonDays,
           universeSize: symbols.length,
-          scoredCount: results.length,
           topN,
-          bullish,
-          ...(bearish ? { bearish } : {}),
+          minScore,
+          includeBearish,
+          results,
           errors,
-          nextStep: 'Use equityGetProfile, equityGetEarningsCalendar, news archive, and trading guards before staging any trade.',
-        }
+        })
+      },
+    }),
+
+    rankFocusWatchlist: tool({
+      description: `Rank the user's fixed focus watchlist for short-term US equity opportunities.
+
+Current focus watchlist: SNOW, MSTR, IBM, SPOT, SHOP, HOOD, QCOM, ARM, PLTR, RKLB, INTC,
+AVGO, META, AMD, MU, TSM, NVDA, ORCL, TSLA, AMZN, GOOGL, MSFT, AAPL.
+Use this when the user asks which watched Nasdaq/US stocks look strongest over the next week.`,
+      inputSchema: z.object({
+        topN: z.number().int().min(1).max(23).default(10).describe('Number of top candidates to return'),
+        minScore: z.number().int().min(0).max(100).default(0).describe('Minimum score filter for bullish candidates'),
+        includeBearish: z.boolean().default(true).describe('Also return the lowest-scoring risk candidates'),
+        horizonDays: z.number().int().min(1).max(30).default(5).describe('Forecast horizon label'),
+      }),
+      execute: async ({ topN, minScore, includeBearish, horizonDays }) => {
+        const { results, errors } = await scoreEquitySymbols(equityClient, FOCUS_EQUITY_WATCHLIST, '1d', horizonDays)
+        return buildRankingPayload({
+          model: 'openalice-equity-trend-heuristic-v1',
+          horizonDays,
+          universeName: FOCUS_EQUITY_WATCHLIST_NAME,
+          universeSize: FOCUS_EQUITY_WATCHLIST.length,
+          topN,
+          minScore,
+          includeBearish,
+          results,
+          errors,
+        })
       },
     }),
   }
