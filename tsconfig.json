@@ -15,6 +15,30 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/research-main.ts",
+    "src/core/**/*.ts",
+    "src/ai-providers/**/*.ts",
+    "src/domain/analysis/**/*.ts",
+    "src/domain/brain/**/*.ts",
+    "src/domain/market-data/**/*.ts",
+    "src/domain/news/**/*.ts",
+    "src/tool/analysis.ts",
+    "src/tool/brain.ts",
+    "src/tool/equity.ts",
+    "src/tool/market.ts",
+    "src/tool/news.ts",
+    "src/tool/thinking.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "src/main.ts",
+    "src/domain/trading/**",
+    "src/tool/trading.ts",
+    "src/task/**",
+    "src/connectors/**",
+    "src/server/**",
+    "src/tool/browser.ts"
+  ]
 }
