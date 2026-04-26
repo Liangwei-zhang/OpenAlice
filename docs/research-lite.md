@@ -1,6 +1,6 @@
 # Research Lite Mode
 
-Research Lite is the default runtime for this fork. It keeps the equity research workflow and disables the trading stack.
+Research Lite is the default runtime for this fork. It keeps the equity research workflow and removes the trading stack from the default install/build path.
 
 ## What it keeps
 
@@ -26,7 +26,7 @@ SNOW, MSTR, IBM, SPOT, SHOP, HOOD, QCOM, ARM, PLTR, RKLB, INTC,
 AVGO, META, AMD, MU, TSM, NVDA, ORCL, TSLA, AMZN, GOOGL, MSFT, AAPL
 ```
 
-## What it disables
+## What it removes from the default workflow
 
 Research Lite does not initialize or expose:
 
@@ -38,7 +38,10 @@ Research Lite does not initialize or expose:
 - Cron jobs
 - Heartbeat automation
 - Telegram connector
-- MCP server
+- External MCP server
+- Browser/screenshot tools
+
+The default `package.json` dependencies no longer install broker or connector packages such as CCXT, Alpaca, IBKR, Telegram, or external MCP server dependencies.
 
 ## Run
 
@@ -127,12 +130,6 @@ Content-Type: application/json
 
 ## Full trading runtime
 
-The original full trading runtime is still available for reference and rollback:
+The original full trading source files may still exist in the repository history or working tree, but the default dependency set and scripts are now optimized for Research Lite.
 
-```bash
-pnpm dev:full
-pnpm build:full
-pnpm start:full
-```
-
-Do not use the full runtime unless you intentionally want broker/trading functionality.
+To restore the full trading runtime later, reintroduce the removed broker/connector dependencies and restore the full runtime scripts from git history.
