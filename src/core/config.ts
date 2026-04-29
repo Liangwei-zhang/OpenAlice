@@ -32,8 +32,8 @@ export const codexProfileSchema = z.object({
 export const vercelProfileSchema = z.object({
   ...baseProfileFields,
   backend: z.literal('vercel-ai-sdk'),
-  provider: z.string().default('anthropic'),
-  model: z.string().default('claude-opus-4-7'),
+  provider: z.string().default('openai'),
+  model: z.string().default('gpt-4o-mini'),
 })
 
 export const profileSchema = z.discriminatedUnion('backend', [
@@ -44,12 +44,20 @@ export const profileSchema = z.discriminatedUnion('backend', [
 
 export type Profile = z.infer<typeof profileSchema>
 
+const defaultOpenAICompatibleProfile = {
+  backend: 'vercel-ai-sdk' as const,
+  provider: 'openai',
+  model: process.env.OPENAI_MODEL || process.env.DEEPSEEK_MODEL || 'gpt-4o-mini',
+  baseUrl: process.env.OPENAI_BASE_URL || process.env.DEEPSEEK_BASE_URL || undefined,
+  apiKey: process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY || undefined,
+}
+
 export const aiProviderSchema = z.object({
   profiles: z.record(
     z.string(),
     profileSchema,
   ).default({
-    default: { backend: 'agent-sdk', model: 'claude-opus-4-7', loginMethod: 'claudeai' },
+    default: defaultOpenAICompatibleProfile,
   }),
   activeProfile: z.string().default('default'),
 })
@@ -161,13 +169,51 @@ async function loadJsonFile(filename: string): Promise<unknown | undefined> {
   }
 }
 
+async function writeJsonFile(filename: string, data: unknown): Promise<void> {
+  await mkdir(CONFIG_DIR, { recursive: true })
+  await writeFile(resolve(CONFIG_DIR, filename), JSON.stringify(data, null, 2) + '\n')
+}
+
 async function parseAndSeed<T>(filename: string, schema: z.ZodType<T>, raw: unknown | undefined): Promise<T> {
   const parsed = schema.parse(raw ?? {})
-  if (raw === undefined) {
-    await mkdir(CONFIG_DIR, { recursive: true })
-    await writeFile(resolve(CONFIG_DIR, filename), JSON.stringify(parsed, null, 2) + '\n')
-  }
+  if (raw === undefined) await writeJsonFile(filename, parsed)
   return parsed
+}
+
+function withEnvApiKey(config: AIProviderConfig): AIProviderConfig {
+  const updated: AIProviderConfig = JSON.parse(JSON.stringify(config))
+  for (const profile of Object.values(updated.profiles)) {
+    if (profile.backend !== 'vercel-ai-sdk') continue
+    if (!profile.apiKey) {
+      if (profile.provider === 'openai') profile.apiKey = process.env.OPENAI_API_KEY || process.env.DEEPSEEK_API_KEY
+      if (profile.provider === 'anthropic') profile.apiKey = process.env.ANTHROPIC_API_KEY
+      if (profile.provider === 'google') profile.apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GOOGLE_API_KEY
+    }
+    if (!profile.baseUrl && profile.provider === 'openai') {
+      profile.baseUrl = process.env.OPENAI_BASE_URL || process.env.DEEPSEEK_BASE_URL
+    }
+  }
+  return updated
+}
+
+function migrateAgentSdkDefault(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw
+  const config = raw as { profiles?: Record<string, unknown>; activeProfile?: string }
+  const active = config.activeProfile ?? 'default'
+  const profile = config.profiles?.[active] as { backend?: string } | undefined
+  if (profile?.backend !== 'agent-sdk') return raw
+
+  // Research Lite should not default to the local Claude Code process. Keep the
+  // legacy profile for manual use, but switch active chat to OpenAI-compatible API.
+  return {
+    ...config,
+    profiles: {
+      ...config.profiles,
+      legacy_agent_sdk: profile,
+      default: defaultOpenAICompatibleProfile,
+    },
+    activeProfile: 'default',
+  }
 }
 
 export async function loadConfig(): Promise<Config> {
@@ -180,12 +226,16 @@ export async function loadConfig(): Promise<Config> {
     'tools.json',
   ] as const
   const raws = await Promise.all(files.map((f) => loadJsonFile(f)))
+  raws[3] = migrateAgentSdkDefault(raws[3])
+
+  const aiProvider = withEnvApiKey(await parseAndSeed(files[3], aiProviderSchema, raws[3]))
+  if (raws[3] !== undefined) await writeJsonFile(files[3], aiProvider)
 
   return {
     agent:      await parseAndSeed(files[0], agentSchema, raws[0]),
     marketData: await parseAndSeed(files[1], marketDataSchema, raws[1]),
     compaction: await parseAndSeed(files[2], compactionSchema, raws[2]),
-    aiProvider: await parseAndSeed(files[3], aiProviderSchema, raws[3]),
+    aiProvider,
     news:       await parseAndSeed(files[4], newsCollectorSchema, raws[4]),
     tools:      await parseAndSeed(files[5], toolsSchema, raws[5]),
   }
@@ -204,10 +254,10 @@ export async function readAgentConfig() {
 
 export async function readAIProviderConfig() {
   try {
-    const raw = JSON.parse(await readFile(resolve(CONFIG_DIR, 'ai-provider-manager.json'), 'utf-8'))
-    return aiProviderSchema.parse(raw)
+    const raw = migrateAgentSdkDefault(JSON.parse(await readFile(resolve(CONFIG_DIR, 'ai-provider-manager.json'), 'utf-8')))
+    return withEnvApiKey(aiProviderSchema.parse(raw))
   } catch {
-    return aiProviderSchema.parse({})
+    return withEnvApiKey(aiProviderSchema.parse({}))
   }
 }
 
@@ -258,23 +308,20 @@ export async function setActiveProfile(slug: string): Promise<void> {
   const config = await readAIProviderConfig()
   if (!config.profiles[slug]) throw new Error(`Unknown profile: "${slug}"`)
   const updated = { ...config, activeProfile: slug }
-  await mkdir(CONFIG_DIR, { recursive: true })
-  await writeFile(resolve(CONFIG_DIR, 'ai-provider-manager.json'), JSON.stringify(updated, null, 2) + '\n')
+  await writeJsonFile('ai-provider-manager.json', updated)
 }
 
 export async function writeProfile(slug: string, profile: Profile): Promise<void> {
   const config = await readAIProviderConfig()
   config.profiles[slug] = profile
-  await mkdir(CONFIG_DIR, { recursive: true })
-  await writeFile(resolve(CONFIG_DIR, 'ai-provider-manager.json'), JSON.stringify(config, null, 2) + '\n')
+  await writeJsonFile('ai-provider-manager.json', config)
 }
 
 export async function deleteProfile(slug: string): Promise<void> {
   const config = await readAIProviderConfig()
   if (config.activeProfile === slug) throw new Error('Cannot delete the active profile')
   delete config.profiles[slug]
-  await mkdir(CONFIG_DIR, { recursive: true })
-  await writeFile(resolve(CONFIG_DIR, 'ai-provider-manager.json'), JSON.stringify(config, null, 2) + '\n')
+  await writeJsonFile('ai-provider-manager.json', config)
 }
 
 // ==================== Config Writer ====================
@@ -304,8 +351,7 @@ export const validSections = Object.keys(sectionSchemas) as ConfigSection[]
 export async function writeConfigSection(section: ConfigSection, data: unknown): Promise<unknown> {
   const schema = sectionSchemas[section]
   const validated = schema.parse(data)
-  await mkdir(CONFIG_DIR, { recursive: true })
-  await writeFile(resolve(CONFIG_DIR, sectionFiles[section]), JSON.stringify(validated, null, 2) + '\n')
+  await writeJsonFile(sectionFiles[section], validated)
   return validated
 }
 
@@ -316,6 +362,5 @@ export async function readWebSubchannels(): Promise<WebChannel[]> {
 
 export async function writeWebSubchannels(channels: WebChannel[]): Promise<void> {
   const validated = webSubchannelsSchema.parse(channels)
-  await mkdir(CONFIG_DIR, { recursive: true })
-  await writeFile(resolve(CONFIG_DIR, 'web-subchannels.json'), JSON.stringify(validated, null, 2) + '\n')
+  await writeJsonFile('web-subchannels.json', validated)
 }
